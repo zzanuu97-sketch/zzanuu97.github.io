@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#F7F7F5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="축의대" />
+  <meta name="description" content="결혼식 축의금 접수를 실수 없이 기록하고 엑셀로 바로 정리하는 오프라인 축의금 장부 앱" />
+  <title>축의대 - 결혼식 축의금 접수 장부</title>
+
+  <!-- Dynamic Inline PWA Icons & Web App Manifest (100% self-contained single file) -->
+  <link id="appFavicon" rel="icon" type="image/svg+xml" href="" />
+  <link id="appleTouchIcon" rel="apple-touch-icon" href="" />
+  <link id="webManifest" rel="manifest" href="" />
+
+  <!-- Pretendard Korean Typography -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- SheetJS for Multi-Sheet Excel (.xlsx) Export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg-page: #F7F7F5;
+      --bg-card: #FFFFFF;
+      --text-primary: #191F28;
+      --text-secondary: #4E5968;
+      --text-muted: #8B95A1;
+      --border-subtle: #E8E6E1;
+      --accent-primary: #8B263E;
+      --accent-hover: #731E32;
+      --accent-soft: #FDF2F4;
+      --accent-border: #F3D1D8;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #EFECE6;
+      color: var(--text-primary);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      touch-action: manipulation;
+    }
+
+    /* Centered Mobile-First App Shell */
+    .app-shell {
+      max-width: 480px;
+      min-height: 100dvh;
+      margin: 0 auto;
+      background-color: var(--bg-page);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 30px rgba(25, 31, 40, 0.06);
+    }
+
+    /* Minimum 48px Touch Targets & Crisp Tactile Press */
+    button, a.btn-touch, label.touch-label, input[type="checkbox"] {
+      touch-action: manipulation;
+    }
+
+    .btn-primary {
+      background-color: var(--accent-primary);
+      color: #FFFFFF;
+      transition: background-color 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--accent-hover);
+    }
+    .btn-primary:active:not(:disabled) {
+      transform: scale(0.985);
+    }
+    .btn-primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background-color: #FFFFFF;
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      transition: background-color 0.15s ease, transform 0.08s ease;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background-color: #F2F0EC;
+    }
+    .btn-secondary:active:not(:disabled) {
+      transform: scale(0.985);
+    }
+
+    .card-surface {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(25, 31, 40, 0.03);
+    }
+
+    /* Custom Scrollbar Hiding for Horizontal Filter Pills */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Safe-area bottom padding for mobile browsers */
+    .pb-safe {
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    /* Smooth Modal & Toast Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.18s ease-out forwards;
+    }
+    .animate-slide-up {
+      animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Remove number input spinners */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell" id="appRoot">
+    <!-- Global Toast Notification Banner -->
+    <div id="toastContainer" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[448px] pointer-events-none flex flex-col gap-2"></div>
+
+    <!-- =====================================================================
+         SCREEN 1: HOME SCREEN ('축의대')
+         ===================================================================== -->
+    <main id="homeScreen" class="flex-1 flex flex-col px-5 pt-7 pb-8">
+      <!-- Top Header -->
+      <header class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2.5">
+            <!-- Mini Emblem SVG -->
+            <span class="w-9 h-9 rounded-xl bg-[#FDF2F4] border border-[#F3D1D8] flex items-center justify-center text-[#8B263E]" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="2.5"></rect>
+                <path d="M3 8l9 6 9-6"></path>
+              </svg>
+            </span>
+            <h1 class="text-[26px] font-extrabold tracking-tight text-[#191F28]">축의대</h1>
+          </div>
+          <a href="#guide" id="homeGuideLink" class="btn-touch inline-flex items-center min-h-[44px] px-2 text-[14px] font-semibold text-[#4E5968] hover:text-[#8B263E] transition-colors">
+            설치·사용 안내 보기 ›
+          </a>
+        </div>
+
+        <!-- PWA Install Action Bar -->
+        <button type="button" id="installAppBtn" class="btn-secondary w-full min-h-[48px] px-4 rounded-xl flex items-center justify-center gap-2 text-[14px] font-semibold text-[#191F28]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B263E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>이 기기에 앱으로 설치</span>
+        </button>
+      </header>
+
+      <!-- Saved Events List -->
+      <section class="flex-1 flex flex-col gap-3 mb-6" aria-label="저장된 예식 목록">
+        <div id="eventListContainer" class="flex flex-col gap-3"></div>
+      </section>
+
+      <!-- Primary & Secondary Bottom Actions -->
+      <div class="flex flex-col gap-2.5 mt-auto pt-2">
+        <button type="button" id="btnNewEvent" class="btn-primary w-full min-h-[54px] rounded-2xl text-[16px] font-bold shadow-sm flex items-center justify-center gap-1.5">
+          <span>+ 새 예식 만들기</span>
+        </button>
+
+        <button type="button" id="btnImportBackup" class="btn-secondary w-full min-h-[48px] rounded-2xl text-[15px] font-semibold text-[#4E5968] flex items-center justify-center gap-2">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span>백업 파일 불러오기</span>
+        </button>
+        <input type="file" id="backupFileInput" accept=".json,application/json" class="hidden" />
+      </div>
+    </main>
+
+    <!-- =====================================================================
+         SCREEN 2: CREATE / EDIT EVENT SCREEN ('새 예식' / '예식 정보 수정')
+         ===================================================================== -->
+    <section id="eventFormScreen" class="hidden flex-1 flex flex-col">
+      <!-- Sticky Top Header -->
+      <header class="sticky top-0 z-20 bg-[#F7F7F5]/95 backdrop-blur-sm border-b border-[#E8E6E1] px-2 h-[56px] flex items-center justify-between">
+        <button type="button" id="btnBackFromEventForm" aria-label="뒤로 가기" class="min-w-[48px] min-h-[48px] flex items-center justify-center text-[26px] font-medium text-[#191F28] rounded-xl hover:bg-black/5">
+          ‹
+        </button>
+        <h2 id="eventFormTitle" class="text-[17px] font-bold text-[#191F28]">새 예식</h2>
+        <div class="w-[48px]"></div>
+      </header>
+
+      <!-- Event Form Body -->
+      <form id="eventForm" class="flex-1 px-5 py-5 flex flex-col gap-4" novalidate>
+        <!-- Side Segmented Selector -->
+        <div class="card-surface p-4">
+          <label class="block text-[14px] font-bold text-[#191F28] mb-2.5">어느 쪽 축의대인가요?</label>
+          <div class="grid grid-cols-2 gap-2 p-1 bg-[#F2F0EC] rounded-xl" role="group" aria-label="어느 쪽 축의대인가요?">
+            <button type="button" id="sideGroomBtn" data-side="신랑측" class="min-h-[48px] rounded-lg text-[15px] font-bold transition-all bg-white text-[#8B263E] shadow-sm">
+              신랑측
+            </button>
+            <button type="button" id="sideBrideBtn" data-side="신부측" class="min-h-[48px] rounded-lg text-[15px] font-bold transition-all text-[#4E5968]">
+              신부측
+            </button>
+          </div>
+        </div>
+
+        <!-- Couple & Ceremony Info -->
+        <div class="card-surface p-4 flex flex-col gap-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="inputGroomName" class="block text-[13px] font-bold text-[#191F28] mb-1.5">신랑 이름</label>
+              <input type="text" id="inputGroomName" placeholder="예: 김민수" required class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[15px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white transition-colors" />
+            </div>
+            <div>
+              <label for="inputBrideName" class="block text-[13px] font-bold text-[#191F28] mb-1.5">신부 이름</label>
+              <input type="text" id="inputBrideName" placeholder="예: 이지은" required class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[15px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white transition-colors" />
+            </div>
+          </div>
+
+          <div>
+            <label for="inputEventDate" class="block text-[13px] font-bold text-[#191F28] mb-1.5">예식 날짜</label>
+            <input type="date" id="inputEventDate" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[15px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white transition-colors" />
+          </div>
+
+          <div>
+            <label for="inputEventVenue" class="flex items-center gap-1.5 text-[13px] font-bold text-[#191F28] mb-1.5">
+              <span>장소</span>
+              <span class="px-1.5 py-0.5 text-[11px] font-semibold rounded bg-[#F2F0EC] text-[#6B7684]">선택</span>
+            </label>
+            <input type="text" id="inputEventVenue" placeholder="예: 더채플앳청담 3층" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[15px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white transition-colors" />
+          </div>
+
+          <div>
+            <label for="inputEventStaff" class="flex items-center gap-1.5 text-[13px] font-bold text-[#191F28] mb-1.5">
+              <span>접수 담당자</span>
+              <span class="px-1.5 py-0.5 text-[11px] font-semibold rounded bg-[#F2F0EC] text-[#6B7684]">선택</span>
+            </label>
+            <input type="text" id="inputEventStaff" placeholder="예: 홍길동" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[15px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white transition-colors" />
+          </div>
+        </div>
+
+        <!-- "누구 손님" Category Preset Manager -->
+        <div class="card-surface p-4">
+          <label class="block text-[14px] font-bold text-[#191F28] mb-1">"누구 손님" 선택지</label>
+          <p class="text-[12px] text-[#6B7684] mb-3">접수 화면에서 빠르게 선택할 하객 구분 태그예요.</p>
+
+          <!-- Removable Chips -->
+          <div id="categoryPresetChips" class="flex flex-wrap gap-2 mb-3"></div>
+
+          <!-- Add Custom Category -->
+          <div class="flex gap-2">
+            <input type="text" id="inputNewCategory" placeholder="직접 추가 (예: 대학동기)" maxlength="15" class="flex-1 min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[14px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white" />
+            <button type="button" id="btnAddCategory" class="btn-secondary min-h-[48px] px-4 rounded-xl text-[14px] font-bold text-[#8B263E] border-[#F3D1D8] bg-[#FDF2F4] hover:bg-[#F9E6EA]">
+              추가
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="mt-auto pt-2 pb-4">
+          <button type="submit" id="btnSaveEventForm" class="btn-primary w-full min-h-[54px] rounded-2xl text-[16px] font-bold shadow-sm">
+            저장하고 시작
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- =====================================================================
+         SCREEN 3: MAIN RECEPTION SCREEN ('접수' / '목록' / '더보기')
+         ===================================================================== -->
+    <section id="receptionScreen" class="hidden flex-1 flex flex-col">
+      <!-- Sticky Top Header -->
+      <header class="sticky top-0 z-20 bg-[#F7F7F5]/95 backdrop-blur-sm border-b border-[#E8E6E1] px-2 h-[58px] flex items-center justify-between gap-2">
+        <button type="button" id="btnBackToHome" aria-label="홈으로 이동" class="min-w-[48px] min-h-[48px] flex items-center justify-center text-[26px] font-medium text-[#191F28] rounded-xl hover:bg-black/5 shrink-0">
+          ‹
+        </button>
+        <div class="flex-1 min-w-0">
+          <h2 id="receptionHeaderTitle" class="text-[15px] font-bold text-[#191F28] truncate">신랑 ♥ 신부 · 신랑측</h2>
+        </div>
+        <div id="receptionLiveSummaryBadge" class="shrink-0 px-2.5 py-1.5 rounded-full bg-[#FDF2F4] border border-[#F3D1D8] text-[12px] font-bold text-[#8B263E]">
+          총 0건 · 0원
+        </div>
+      </header>
+
+      <!-- Closed Status Banner -->
+      <div id="closedBanner" class="hidden bg-[#FFF4E5] border-b border-[#FFE0B2] px-4 py-3 flex items-center gap-2 text-[13px] font-semibold text-[#9A5B00]">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>접수가 마감되었습니다. 더보기에서 다시 열 수 있습니다.</span>
+      </div>
+
+      <!-- TAB 1: '접수' (Entry Form) -->
+      <div id="tabReceive" class="flex-1 px-4 py-4 pb-24 flex flex-col gap-3.5">
+        <!-- 1. 이름 Card -->
+        <div class="card-surface p-4">
+          <div class="flex items-center justify-between mb-2">
+            <label for="entryNameInput" class="text-[14px] font-bold text-[#191F28]">이름</label>
+            <label class="touch-label inline-flex items-center gap-2 min-h-[36px] px-2 -mr-2 rounded-lg cursor-pointer select-none">
+              <input type="checkbox" id="entryUnknownNameCheck" class="w-4 h-4 accent-[#8B263E] rounded cursor-pointer" />
+              <span class="text-[13px] font-semibold text-[#4E5968]">이름 확인 어려움</span>
+            </label>
+          </div>
+          <input type="text" id="entryNameInput" placeholder="하객 성함 입력" autocomplete="off" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[16px] font-medium text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white disabled:bg-[#F2F0EC] disabled:text-[#8B95A1] transition-colors" />
+        </div>
+
+        <!-- 2. 금액 Card -->
+        <div class="card-surface p-4">
+          <div class="flex items-center justify-between mb-2.5">
+            <label for="entryAmountInput" class="text-[14px] font-bold text-[#191F28]">금액</label>
+            <!-- Unit Toggle: 만원 | 원 -->
+            <div class="inline-flex p-0.5 bg-[#F2F0EC] rounded-lg" role="group" aria-label="금액 단위 선택">
+              <button type="button" id="unitManwonBtn" data-unit="만원" class="min-h-[34px] px-3 rounded-md text-[12px] font-bold bg-white text-[#8B263E] shadow-xs transition-all">
+                만원
+              </button>
+              <button type="button" id="unitWonBtn" data-unit="원" class="min-h-[34px] px-3 rounded-md text-[12px] font-bold text-[#4E5968] transition-all">
+                원
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick-Add Buttons -->
+          <div class="grid grid-cols-4 gap-1.5 mb-2.5">
+            <button type="button" data-add-man="1" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+1만</button>
+            <button type="button" data-add-man="3" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+3만</button>
+            <button type="button" data-add-man="5" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+5만</button>
+            <button type="button" data-add-man="10" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+10만</button>
+            <button type="button" data-add-man="20" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+20만</button>
+            <button type="button" data-add-man="30" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+30만</button>
+            <button type="button" data-add-man="50" class="quick-amt-btn btn-secondary min-h-[44px] rounded-xl text-[13px] font-bold text-[#191F28]">+50만</button>
+            <button type="button" id="btnResetAmount" class="min-h-[44px] rounded-xl text-[13px] font-bold text-[#6B7684] bg-[#F2F0EC] hover:bg-[#E7E4DD] transition-colors">초기화</button>
+          </div>
+
+          <!-- Numeric Amount Input with Trailing Unit -->
+          <div class="relative flex items-center">
+            <input type="number" id="entryAmountInput" inputmode="numeric" min="0" placeholder="0" class="w-full min-h-[52px] pl-3.5 pr-14 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[20px] font-extrabold text-right text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white disabled:bg-[#F2F0EC] transition-colors" />
+            <span id="entryAmountUnitLabel" class="absolute right-4 text-[15px] font-bold text-[#4E5968] pointer-events-none">만원</span>
+          </div>
+
+          <!-- Live Korean Currency Readout -->
+          <div id="entryAmountPreview" class="mt-2 text-right text-[13px] font-bold text-[#8B263E] min-h-[20px]">
+            0원
+          </div>
+        </div>
+
+        <!-- 3. 누구 손님 Card -->
+        <div class="card-surface p-4">
+          <div class="flex items-center gap-1.5 mb-2.5">
+            <span class="text-[14px] font-bold text-[#191F28]">누구 손님</span>
+            <span class="px-1.5 py-0.5 text-[11px] font-semibold rounded bg-[#F2F0EC] text-[#6B7684]">선택</span>
+          </div>
+          <div id="entryCategoryChips" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- 4. 메모 & 식권 Card -->
+        <div class="card-surface p-4 flex flex-col gap-4">
+          <!-- 메모 -->
+          <div>
+            <div class="flex items-center gap-1.5 mb-2">
+              <label for="entryMemoInput" class="text-[14px] font-bold text-[#191F28]">메모</label>
+              <span class="px-1.5 py-0.5 text-[11px] font-semibold rounded bg-[#F2F0EC] text-[#6B7684]">선택</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mb-2" id="quickMemoChips">
+              <button type="button" data-memo="계좌이체" class="memo-chip min-h-[36px] px-3 rounded-full text-[12px] font-semibold border border-[#E8E6E1] bg-[#FAFAF9] text-[#4E5968] hover:border-[#8B263E]">계좌이체</button>
+              <button type="button" data-memo="봉투만" class="memo-chip min-h-[36px] px-3 rounded-full text-[12px] font-semibold border border-[#E8E6E1] bg-[#FAFAF9] text-[#4E5968] hover:border-[#8B263E]">봉투만</button>
+              <button type="button" data-memo="축하화환" class="memo-chip min-h-[36px] px-3 rounded-full text-[12px] font-semibold border border-[#E8E6E1] bg-[#FAFAF9] text-[#4E5968] hover:border-[#8B263E]">축하화환</button>
+              <button type="button" data-memo="대리전달" class="memo-chip min-h-[36px] px-3 rounded-full text-[12px] font-semibold border border-[#E8E6E1] bg-[#FAFAF9] text-[#4E5968] hover:border-[#8B263E]">대리전달</button>
+            </div>
+            <input type="text" id="entryMemoInput" placeholder="특이사항 입력 (예: 김철수님 대리)" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[14px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white disabled:bg-[#F2F0EC]" />
+          </div>
+
+          <!-- 식권 -->
+          <div class="pt-3 border-t border-[#F2F0EC]">
+            <div class="flex items-center justify-between mb-2.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[14px] font-bold text-[#191F28]">식권</span>
+                <span class="px-1.5 py-0.5 text-[11px] font-semibold rounded bg-[#F2F0EC] text-[#6B7684]">선택</span>
+              </div>
+
+              <!-- Stepper -->
+              <div class="inline-flex items-center gap-2">
+                <button type="button" id="btnTicketMinus" aria-label="식권 1매 빼기" class="btn-secondary w-[48px] h-[48px] rounded-xl text-[20px] font-bold flex items-center justify-center">−</button>
+                <span id="entryTicketDisplay" class="min-w-[44px] text-center text-[17px] font-extrabold text-[#191F28]">0매</span>
+                <button type="button" id="btnTicketPlus" aria-label="식권 1매 추가" class="btn-secondary w-[48px] h-[48px] rounded-xl text-[20px] font-bold flex items-center justify-center">+</button>
+              </div>
+            </div>
+
+            <!-- Quick Ticket Pills -->
+            <div class="grid grid-cols-5 gap-1.5" id="quickTicketPills">
+              <button type="button" data-ticket="0" class="ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#8B263E] bg-[#FDF2F4] text-[#8B263E]">0</button>
+              <button type="button" data-ticket="1" class="ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#E8E6E1] bg-white text-[#4E5968]">1</button>
+              <button type="button" data-ticket="2" class="ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#E8E6E1] bg-white text-[#4E5968]">2</button>
+              <button type="button" data-ticket="3" class="ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#E8E6E1] bg-white text-[#4E5968]">3</button>
+              <button type="button" data-ticket="4" class="ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#E8E6E1] bg-white text-[#4E5968]">4</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Save Button -->
+        <button type="button" id="btnSaveEntry" class="btn-primary w-full min-h-[54px] rounded-2xl text-[17px] font-extrabold shadow-sm mt-1">
+          저장
+        </button>
+      </div>
+
+      <!-- TAB 2: '목록' (Summary, Search, Filter & Entries List) -->
+      <div id="tabList" class="hidden flex-1 px-4 py-4 pb-24 flex flex-col gap-3.5">
+        <!-- Summary & Category Breakdown Card -->
+        <div class="card-surface p-4" id="listSummaryCard"></div>
+
+        <!-- Search & Filter Controls -->
+        <div class="flex flex-col gap-2.5">
+          <div class="relative">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8B95A1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="search" id="listSearchInput" placeholder="이름 또는 메모 검색" class="w-full min-h-[48px] pl-10 pr-10 rounded-xl border border-[#E8E6E1] bg-white text-[14px] text-[#191F28] focus:outline-none focus:border-[#8B263E]" />
+            <button type="button" id="btnClearSearch" aria-label="검색어 지우기" class="hidden absolute right-1 top-1/2 -translate-y-1/2 w-[40px] h-[40px] flex items-center justify-center text-[#8B95A1] hover:text-[#191F28]">
+              ✕
+            </button>
+          </div>
+
+          <!-- Horizontal Scrollable Filter Pills -->
+          <div id="listFilterPills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"></div>
+        </div>
+
+        <!-- Sort & Result Count Bar -->
+        <div class="flex items-center justify-between px-1">
+          <span id="filteredResultCount" class="text-[13px] font-semibold text-[#6B7684]">내역 0건</span>
+          <button type="button" id="btnToggleSort" class="min-h-[36px] px-2.5 rounded-lg text-[12px] font-bold text-[#4E5968] hover:bg-black/5 inline-flex items-center gap-1">
+            <span id="sortOrderLabel">최신순</span>
+            <span>⇅</span>
+          </button>
+        </div>
+
+        <!-- Entries List Container -->
+        <div id="entriesListContainer" class="flex flex-col gap-2.5"></div>
+      </div>
+
+      <!-- TAB 3: '더보기' (Export, Backup, Close Reception, Edit Event, History) -->
+      <div id="tabMore" class="hidden flex-1 px-4 py-4 pb-24 flex flex-col gap-3.5">
+        <div class="card-surface overflow-hidden divide-y divide-[#F2F0EC]">
+          <!-- 엑셀로 저장 -->
+          <button type="button" id="btnExportExcel" class="w-full min-h-[60px] px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#FAFAF9] transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-xl bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="8" y1="13" x2="16" y2="17"></line>
+                  <line x1="16" y1="13" x2="8" y2="17"></line>
+                </svg>
+              </span>
+              <div>
+                <div class="text-[15px] font-bold text-[#191F28]">엑셀로 저장</div>
+                <div class="text-[12px] text-[#6B7684]">접수 내역과 요약 통계 시트를 .xlsx 파일로 저장</div>
+              </div>
+            </div>
+            <span class="text-[#8B95A1] text-[18px]">›</span>
+          </button>
+
+          <!-- 백업 파일 저장 -->
+          <button type="button" id="btnExportJsonBackup" class="w-full min-h-[60px] px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#FAFAF9] transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+              </span>
+              <div>
+                <div class="text-[15px] font-bold text-[#191F28]">백업 파일 저장</div>
+                <div class="text-[12px] text-[#6B7684]">데이터 복원 및 기기 이동용 백업(.json) 다운로드</div>
+              </div>
+            </div>
+            <span class="text-[#8B95A1] text-[18px]">›</span>
+          </button>
+        </div>
+
+        <hr class="border-[#E8E6E1] my-0.5" />
+
+        <div class="card-surface overflow-hidden divide-y divide-[#F2F0EC]">
+          <!-- 접수 마감 / 접수 다시 열기 -->
+          <button type="button" id="btnToggleCloseEvent" class="w-full min-h-[56px] px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#FAFAF9] transition-colors">
+            <div class="flex items-center gap-3">
+              <span id="toggleCloseIconWrap" class="w-10 h-10 rounded-xl bg-[#FDF2F4] text-[#8B263E] flex items-center justify-center shrink-0">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <div>
+                <div id="toggleCloseLabel" class="text-[15px] font-bold text-[#8B263E]">접수 마감</div>
+                <div id="toggleCloseSublabel" class="text-[12px] text-[#6B7684]">마감 후에는 신규 접수가 잠깁니다</div>
+              </div>
+            </div>
+            <span class="text-[#8B95A1] text-[18px]">›</span>
+          </button>
+
+          <!-- 예식 정보 수정 -->
+          <button type="button" id="btnEditCurrentEvent" class="w-full min-h-[56px] px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#FAFAF9] transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-xl bg-[#F2F0EC] text-[#4E5968] flex items-center justify-center shrink-0">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </span>
+              <div>
+                <div class="text-[15px] font-bold text-[#191F28]">예식 정보 수정</div>
+                <div class="text-[12px] text-[#6B7684]">신랑·신부 이름, 날짜, 장소, 누구 손님 항목 편집</div>
+              </div>
+            </div>
+            <span class="text-[#8B95A1] text-[18px]">›</span>
+          </button>
+
+          <!-- 변경 이력 보기 -->
+          <button type="button" id="btnOpenHistoryModal" class="w-full min-h-[56px] px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#FAFAF9] transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-xl bg-[#F2F0EC] text-[#4E5968] flex items-center justify-center shrink-0">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </span>
+              <div>
+                <div class="text-[15px] font-bold text-[#191F28]">변경 이력 보기</div>
+                <div class="text-[12px] text-[#6B7684]">모든 접수·수정·취소·마감 기록 확인</div>
+              </div>
+            </div>
+            <span class="text-[#8B95A1] text-[18px]">›</span>
+          </button>
+        </div>
+
+        <!-- Offline Auto-Save Notice Footer -->
+        <p class="text-center text-[12px] leading-relaxed text-[#6B7684] px-3 pt-2">
+          모든 내용은 입력 즉시 이 기기에 자동 저장됩니다. 인터넷 연결이 필요 없습니다.
+        </p>
+      </div>
+
+      <!-- Fixed Bottom Navigation Bar (3 Tabs) -->
+      <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-30 bg-white/95 backdrop-blur-sm border-t border-[#E8E6E1] grid grid-cols-3 pb-safe" aria-label="하단 메뉴">
+        <button type="button" id="navTabReceive" data-tab="receive" class="min-h-[58px] flex flex-col items-center justify-center gap-0.5 text-[#8B263E] font-bold transition-colors">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          <span class="text-[12px]">접수</span>
+        </button>
+
+        <button type="button" id="navTabList" data-tab="list" class="min-h-[58px] flex flex-col items-center justify-center gap-0.5 text-[#6B7684] font-semibold transition-colors">
+          <div class="relative flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            <span id="navListCountBadge" class="ml-1 px-1.5 py-0.2 rounded-full bg-[#F2F0EC] text-[#4E5968] text-[11px] font-extrabold">0</span>
+          </div>
+          <span class="text-[12px]">목록</span>
+        </button>
+
+        <button type="button" id="navTabMore" data-tab="more" class="min-h-[58px] flex flex-col items-center justify-center gap-0.5 text-[#6B7684] font-semibold transition-colors">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1.5"></circle>
+            <circle cx="19" cy="12" r="1.5"></circle>
+            <circle cx="5" cy="12" r="1.5"></circle>
+          </svg>
+          <span class="text-[12px]">더보기</span>
+        </button>
+      </nav>
+    </section>
+
+    <!-- =====================================================================
+         MODAL 1: WELCOME MODAL ('축의대에 오신 걸 환영해요')
+         ===================================================================== -->
+    <div id="welcomeModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-center justify-center p-5 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="welcomeModalTitle">
+      <div class="bg-white w-full max-w-[400px] rounded-3xl p-6 text-center shadow-xl border border-[#E8E6E1] animate-slide-up">
+        <!-- Custom SVG Wedding Envelope & Ledger Emblem -->
+        <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-[#FDF2F4] border border-[#F3D1D8] flex items-center justify-center">
+          <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="6" y="10" width="36" height="28" rx="4" fill="#FFFFFF" stroke="#8B263E" stroke-width="2.4"/>
+            <path d="M7 13L24 25L41 13" stroke="#8B263E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="25" r="5.5" fill="#8B263E"/>
+            <path d="M24 22.8C23.1 21.8 21.5 22.1 21.5 23.5C21.5 24.9 24 26.8 24 26.8C24 26.8 26.5 24.9 26.5 23.5C26.5 22.1 24.9 21.8 24 22.8Z" fill="#FFFFFF"/>
+          </svg>
+        </div>
+
+        <h2 id="welcomeModalTitle" class="text-[20px] font-extrabold text-[#191F28] tracking-tight mb-2">
+          축의대에 오신 걸 환영해요
+        </h2>
+        <p class="text-[14px] leading-relaxed text-[#4E5968] mb-6">
+          결혼식 축의금 접수를 실수 없이 기록하고<br />
+          엑셀로 바로 정리하는 앱이에요.
+        </p>
+
+        <div class="flex flex-col gap-2.5">
+          <button type="button" id="btnWelcomeGuide" class="btn-secondary w-full min-h-[48px] rounded-xl text-[14px] font-bold text-[#4E5968]">
+            설치·사용 안내 보기
+          </button>
+          <button type="button" id="btnWelcomeStart" class="btn-primary w-full min-h-[52px] rounded-xl text-[16px] font-bold shadow-sm">
+            바로 시작하기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL 2: INSTALLATION & USAGE GUIDE MODAL ('설치·사용 안내')
+         ===================================================================== -->
+    <div id="guideModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="guideModalTitle">
+      <div class="bg-white w-full max-w-[460px] max-h-[88dvh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-xl border border-[#E8E6E1] animate-slide-up">
+        <div class="px-5 py-4 border-b border-[#E8E6E1] flex items-center justify-between shrink-0">
+          <h2 id="guideModalTitle" class="text-[17px] font-extrabold text-[#191F28]">설치·사용 안내</h2>
+          <button type="button" id="btnCloseGuideTop" aria-label="안내 닫기" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-[#6B7684] hover:bg-black/5 text-[18px]">✕</button>
+        </div>
+
+        <div class="p-5 overflow-y-auto flex flex-col gap-4 text-[14px] leading-relaxed text-[#4E5968]">
+          <!-- Section 1: App Installation -->
+          <div class="p-4 rounded-2xl bg-[#FAFAF9] border border-[#E8E6E1]">
+            <h3 class="text-[15px] font-extrabold text-[#191F28] mb-2 flex items-center gap-1.5">
+              <span class="text-[#8B263E]">1.</span> 홈 화면에 앱으로 설치하기
+            </h3>
+            <ul class="space-y-2 text-[13px]">
+              <li>
+                <strong class="text-[#191F28]">아이폰 (Safari):</strong> 하단 가운데 <strong>공유 버튼(□↑)</strong>을 누른 뒤 <strong>‘홈 화면에 추가’</strong>를 선택하세요.
+              </li>
+              <li>
+                <strong class="text-[#191F28]">갤럭시 / 안드로이드 (Chrome):</strong> 상단의 <strong>‘이 기기에 앱으로 설치’</strong> 버튼을 누르거나 우측 상단 메뉴(<strong>⋮</strong>)에서 <strong>‘앱 설치’</strong>를 선택하세요.
+              </li>
+            </ul>
+          </div>
+
+          <!-- Section 2: Offline Auto-save -->
+          <div class="p-4 rounded-2xl bg-[#FAFAF9] border border-[#E8E6E1]">
+            <h3 class="text-[15px] font-extrabold text-[#191F28] mb-1.5 flex items-center gap-1.5">
+              <span class="text-[#8B263E]">2.</span> 오프라인 작동 및 즉시 자동 저장
+            </h3>
+            <p class="text-[13px]">
+              예식장 지하 홀처럼 데이터가 잘 터지지 않는 곳에서도 인터넷 연결 없이 100% 동작합니다. 모든 기록은 입력하는 즉시 현재 기기에 자동 저장됩니다.
+            </p>
+          </div>
+
+          <!-- Section 3: Sequential Envelope Numbering -->
+          <div class="p-4 rounded-2xl bg-[#FAFAF9] border border-[#E8E6E1]">
+            <h3 class="text-[15px] font-extrabold text-[#191F28] mb-1.5 flex items-center gap-1.5">
+              <span class="text-[#8B263E]">3.</span> 봉투 순번(#1, #2…)으로 실수 방지
+            </h3>
+            <p class="text-[13px]">
+              접수 저장 시 <strong>#1, #2, #3</strong> 순서대로 고유 번호가 부여됩니다. 받은 축의금 봉투 겉면에 이 번호를 적어두면 예식 후 실제 현금과 1:1로 정확하게 대조할 수 있습니다. 잘못 입력한 내역은 <strong>‘접수 취소’</strong> 처리되어 뒤따르는 번호가 밀리지 않습니다.
+            </p>
+          </div>
+
+          <!-- Section 4: Excel & JSON Backup -->
+          <div class="p-4 rounded-2xl bg-[#FAFAF9] border border-[#E8E6E1]">
+            <h3 class="text-[15px] font-extrabold text-[#191F28] mb-1.5 flex items-center gap-1.5">
+              <span class="text-[#8B263E]">4.</span> 엑셀(.xlsx) 정리 및 백업 파일
+            </h3>
+            <p class="text-[13px]">
+              <strong>‘더보기 → 엑셀로 저장’</strong>을 누르면 전체 접수 내역과 하객 구분별 통계가 담긴 엑셀 파일이 즉시 다운로드됩니다. 기기를 바꾸거나 교대할 때는 <strong>‘백업 파일 저장’</strong> 후 새 기기에서 <strong>‘백업 파일 불러오기’</strong>를 이용하세요.
+            </p>
+          </div>
+        </div>
+
+        <div class="p-4 border-t border-[#E8E6E1] shrink-0 pb-safe">
+          <button type="button" id="btnCloseGuideBottom" class="btn-primary w-full min-h-[50px] rounded-xl text-[15px] font-bold">
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL 3: EDIT ENTRY MODAL ('#N 접수 내역 수정')
+         ===================================================================== -->
+    <div id="editEntryModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="editEntryModalTitle">
+      <div class="bg-white w-full max-w-[460px] max-h-[90dvh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-xl border border-[#E8E6E1] animate-slide-up">
+        <!-- Modal Header -->
+        <div class="px-5 py-4 border-b border-[#E8E6E1] flex items-center justify-between shrink-0">
+          <h2 id="editEntryModalTitle" class="text-[17px] font-extrabold text-[#191F28]">#1 접수 내역 수정</h2>
+          <span id="editEntryStatusBadge" class="hidden px-2.5 py-0.5 rounded-full bg-red-50 text-red-600 text-[12px] font-bold">취소됨</span>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-5 overflow-y-auto flex flex-col gap-4">
+          <!-- Name & Unknown Checkbox -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="editNameInput" class="text-[13px] font-bold text-[#191F28]">이름</label>
+              <label class="touch-label inline-flex items-center gap-2 min-h-[34px] cursor-pointer select-none">
+                <input type="checkbox" id="editUnknownNameCheck" class="w-4 h-4 accent-[#8B263E] rounded cursor-pointer" />
+                <span class="text-[13px] font-semibold text-[#4E5968]">이름 확인 어려움</span>
+              </label>
+            </div>
+            <input type="text" id="editNameInput" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[15px] font-medium text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white disabled:bg-[#F2F0EC] disabled:text-[#8B95A1]" />
+          </div>
+
+          <!-- Amount in KRW (원) -->
+          <div>
+            <label for="editAmountInput" class="block text-[13px] font-bold text-[#191F28] mb-1.5">금액 (원)</label>
+            <input type="number" id="editAmountInput" inputmode="numeric" min="0" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[17px] font-extrabold text-right text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white" />
+            <div id="editAmountPreview" class="mt-1.5 text-right text-[13px] font-bold text-[#8B263E] min-h-[18px]">
+              0원
+            </div>
+          </div>
+
+          <!-- 누구 손님 Chips -->
+          <div>
+            <label class="block text-[13px] font-bold text-[#191F28] mb-2">누구 손님</label>
+            <div id="editCategoryChips" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <!-- 메모 -->
+          <div>
+            <label for="editMemoInput" class="block text-[13px] font-bold text-[#191F28] mb-1.5">메모</label>
+            <input type="text" id="editMemoInput" placeholder="메모 없음" class="w-full min-h-[48px] px-3.5 rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[14px] text-[#191F28] focus:outline-none focus:border-[#8B263E] focus:bg-white" />
+          </div>
+
+          <!-- 식권 -->
+          <div class="flex items-center justify-between pt-1">
+            <label for="editTicketInput" class="text-[13px] font-bold text-[#191F28]">식권</label>
+            <div class="inline-flex items-center gap-2">
+              <button type="button" id="btnEditTicketMinus" aria-label="식권 1매 빼기" class="btn-secondary w-[46px] h-[46px] rounded-xl text-[18px] font-bold flex items-center justify-center">−</button>
+              <input type="number" id="editTicketInput" inputmode="numeric" min="0" value="0" class="w-[64px] min-h-[46px] text-center rounded-xl border border-[#E8E6E1] bg-[#FAFAF9] text-[16px] font-extrabold text-[#191F28]" />
+              <button type="button" id="btnEditTicketPlus" aria-label="식권 1매 추가" class="btn-secondary w-[46px] h-[46px] rounded-xl text-[18px] font-bold flex items-center justify-center">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="p-4 border-t border-[#E8E6E1] flex items-center justify-between gap-2 shrink-0 pb-safe">
+          <button type="button" id="btnCancelEntryToggle" class="min-h-[48px] px-3.5 rounded-xl text-[14px] font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+            접수 취소
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button type="button" id="btnCloseEditEntry" class="btn-secondary min-h-[48px] px-4 rounded-xl text-[14px] font-bold text-[#4E5968]">
+              닫기
+            </button>
+            <button type="button" id="btnSaveEditEntry" class="btn-primary min-h-[48px] px-5 rounded-xl text-[14px] font-bold">
+              수정 저장
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================================
+         MODAL 4: CHANGE HISTORY MODAL ('변경 이력')
+         ===================================================================== -->
+    <div id="historyModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+      <div class="bg-white w-full max-w-[460px] max-h-[85dvh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-xl border border-[#E8E6E1] animate-slide-up">
+        <div class="px-5 py-4 border-b border-[#E8E6E1] flex items-center justify-between shrink-0">
+          <h2 id="historyModalTitle" class="text-[17px] font-extrabold text-[#191F28]">변경 이력</h2>
+          <span id="historyCountBadge" class="text-[12px] font-bold text-[#6B7684]">0건</span>
+        </div>
+
+        <div id="historyListContainer" class="p-4 overflow-y-auto flex-1 flex flex-col gap-2.5"></div>
+
+        <div class="p-4 border-t border-[#E8E6E1] shrink-0 pb-safe">
+          <button type="button" id="btnCloseHistoryModal" class="btn-secondary w-full min-h-[48px] rounded-xl text-[15px] font-bold text-[#191F28]">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 축의대 (Chuguidae) - Offline-First Korean Wedding Monetary Gift Ledger PWA
+     * Complete client-side application state, storage persistence, formatting helpers,
+     * Excel (.xlsx) multi-sheet export, JSON backup/restore, and audit logging.
+     */
+    (function () {
+      'use strict';
+
+      /* =====================================================================
+         1. CONSTANTS & STORAGE KEYS
+         ===================================================================== */
+      const STORAGE_KEYS = {
+        WELCOMED: 'chuguidae_welcomed_v1',
+        EVENTS: 'chuguidae_events_v1'
+      };
+
+      const DEFAULT_CATEGORIES = {
+        '신랑측': ['신랑 본인', '신랑 부', '신랑 모', '친척', '회사', '친구'],
+        '신부측': ['신부 본인', '신부 부', '신부 모', '친척', '회사', '친구']
+      };
+
+      /* =====================================================================
+         2. APPLICATION STATE
+         ===================================================================== */
+      let events = [];
+      let activeEventId = null;
+      let activeTab = 'receive'; // 'receive' | 'list' | 'more'
+      let deferredInstallPrompt = null;
+
+      // Create / Edit Event Form State
+      let editingEventId = null; // null = create mode, string = edit mode
+      let formSide = '신랑측';
+      let formCategories = [...DEFAULT_CATEGORIES['신랑측']];
+      let categoriesManuallyEdited = false;
+
+      // Reception Entry Form State
+      let entryUnit = '만원'; // '만원' | '원'
+      let selectedCategory = '';
+      let ticketCount = 0;
+
+      // List Tab Filter & Sort State
+      let listSearchQuery = '';
+      let listActiveFilter = '전체';
+      let listSortDesc = true; // true = 최신순 (#N -> #1), false = 번호순 (#1 -> #N)
+
+      // Edit Entry Modal State
+      let editingEntrySeq = null;
+      let editSelectedCategory = '';
+
+      /* =====================================================================
+         3. PWA DYNAMIC MANIFEST & SVG ICON SETUP (No external files needed)
+         ===================================================================== */
+      function initPwaAssets() {
+        try {
+          const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192"><rect width="192" height="192" rx="42" fill="#8B263E"/><rect x="34" y="54" width="124" height="84" rx="12" fill="#FFFFFF"/><path d="M36 62L96 104L156 62" fill="none" stroke="#8B263E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="96" cy="102" r="14" fill="#8B263E"/></svg>`;
+          const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSvg);
+          document.getElementById('appFavicon').setAttribute('href', svgUrl);
+          document.getElementById('appleTouchIcon').setAttribute('href', svgUrl);
+
+          const manifestObj = {
+            name: '축의대 - 결혼식 축의금 접수 장부',
+            short_name: '축의대',
+            description: '결혼식 축의금 접수를 실수 없이 기록하고 엑셀로 바로 정리하는 앱',
+            start_url: '.',
+            display: 'standalone',
+            background_color: '#F7F7F5',
+            theme_color: '#F7F7F5',
+            icons: [
+              {
+                src: svgUrl,
+                sizes: '192x192',
+                type: 'image/svg+xml',
+                purpose: 'any maskable'
+              }
+            ]
+          };
+          const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+          document.getElementById('webManifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+        } catch (err) {
+          console.warn('PWA manifest setup skipped:', err);
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredInstallPrompt = e;
+        });
+      }
+
+      /* =====================================================================
+         4. STORAGE & UTILITY HELPERS
+         ===================================================================== */
+      function loadEventsFromStorage() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.EVENTS);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          console.error('Failed to read from localStorage:', err);
+          showToast('저장된 데이터를 불러오는 중 오류가 발생했습니다.', 'error');
+          return [];
+        }
+      }
+
+      function saveEventsToStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events));
+        } catch (err) {
+          console.error('Failed to save to localStorage:', err);
+          showToast('기기 저장 공간이 부족하여 저장에 실패했습니다.', 'error');
+        }
+      }
+
+      function getActiveEvent() {
+        return events.find((evt) => evt.id === activeEventId) || null;
+      }
+
+      function generateId(prefix) {
+        return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      }
+
+      function getTodayDateString() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      function formatTimeShort(isoStr) {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        if (Number.isNaN(d.getTime())) return '';
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      }
+
+      function formatDateTimeFull(isoStr) {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        if (Number.isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        const ss = String(d.getSeconds()).padStart(2, '0');
+        return `${y}.${m}.${day} ${hh}:${mm}:${ss}`;
+      }
+
+      function formatDateKorean(dateStr) {
+        if (!dateStr) return '날짜 미지정';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        return `${parts[0]}년 ${Number(parts[1])}월 ${Number(parts[2])}일`;
+      }
+
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      /**
+       * Converts integer amount in KRW to natural Korean words (e.g. 50000 -> '오만', 1250000 -> '백이십오만')
+       */
+      function numberToKoreanWords(num) {
+        if (!num || num <= 0) return '';
+        const digits = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+        const smallUnits = ['', '십', '백', '천'];
+        const bigUnits = ['', '만', '억', '조'];
+
+        let result = '';
+        let bigIndex = 0;
+        let n = Math.floor(num);
+
+        while (n > 0) {
+          const chunk = n % 10000;
+          if (chunk > 0) {
+            let chunkStr = '';
+            let temp = chunk;
+            for (let i = 0; i < 4; i++) {
+              const d = temp % 10;
+              if (d > 0) {
+                // Omit '일' before 십/백/천 (e.g., 10 -> 십, 150000 -> 십오만)
+                // Keep '일' if it's the ones place of a big unit like '일만' only when standalone, though standard Korean prefers '만' or '일만'
+                const digitWord = (d === 1 && i > 0) ? '' : digits[d];
+                chunkStr = digitWord + smallUnits[i] + chunkStr;
+              }
+              temp = Math.floor(temp / 10);
+            }
+            if (chunkStr === '일' && bigIndex === 1 && n < 100000) {
+              // 10,000 -> '만원' (more natural than '일만원')
+              chunkStr = '';
+            }
+            result = chunkStr + bigUnits[bigIndex] + result;
+          }
+          n = Math.floor(n / 10000);
+          bigIndex++;
+        }
+        return result;
+      }
+
+      /**
+       * Formats KRW integer into '50,000원 (오만원)'
+       */
+      function formatKoreanWonFull(amount) {
+        const val = Math.max(0, Math.floor(Number(amount) || 0));
+        if (val === 0) return '0원';
+        const formattedDigits = val.toLocaleString('ko-KR') + '원';
+        const koreanWords = numberToKoreanWords(val);
+        return koreanWords ? `${formattedDigits} (${koreanWords}원)` : formattedDigits;
+      }
+
+      /**
+       * Formats KRW integer into compact header badge text (e.g. '145만원', '145.5만원', '8,000원')
+       */
+      function formatCompactManwon(amount) {
+        const val = Math.max(0, Math.floor(Number(amount) || 0));
+        if (val === 0) return '0원';
+        if (val >= 10000 && val % 10000 === 0) {
+          return `${(val / 10000).toLocaleString('ko-KR')}만원`;
+        }
+        if (val >= 10000 && val % 1000 === 0) {
+          return `${(val / 10000).toLocaleString('ko-KR')}만원`;
+        }
+        return `${val.toLocaleString('ko-KR')}원`;
+      }
+
+      /**
+       * Non-blocking Custom Toast Message (Replaces native alert())
+       */
+      function showToast(message, type = 'default') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        const bgClass =
+          type === 'error'
+            ? 'bg-[#991B1B] text-white'
+            : type === 'success'
+            ? 'bg-[#191F28] text-white'
+            : 'bg-[#191F28] text-white';
+
+        toast.className = `${bgClass} px-4 py-3 rounded-2xl shadow-lg text-[13.5px] font-semibold leading-snug text-center animate-slide-up pointer-events-auto`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.2s ease';
+          setTimeout(() => toast.remove(), 220);
+        }, 2800);
+      }
+
+      function appendHistoryLog(eventObj, action, detail) {
+        if (!Array.isArray(eventObj.history)) {
+          eventObj.history = [];
+        }
+        eventObj.history.push({
+          id: generateId('log'),
+          timestamp: new Date().toISOString(),
+          action,
+          detail
+        });
+      }
+
+      /* =====================================================================
+         5. NAVIGATION & MODAL CONTROLLERS
+         ===================================================================== */
+      function showScreen(screenId) {
+        ['homeScreen', 'eventFormScreen', 'receptionScreen'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (id === screenId) {
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        });
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+
+      function openModal(modalId) {
+        document.getElementById(modalId).classList.remove('hidden');
+      }
+
+      function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+      }
+
+      /* =====================================================================
+         6. SCREEN 1: HOME SCREEN RENDERING & ACTIONS
+         ===================================================================== */
+      function renderHomeScreen() {
+        const container = document.getElementById('eventListContainer');
+        container.innerHTML = '';
+
+        if (events.length === 0) {
+          container.innerHTML = `
+            <div class="card-surface p-7 text-center my-2">
+              <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-[#F2F0EC] text-[#6B7684] flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+              </div>
+              <p class="text-[15px] font-bold text-[#191F28] mb-1">등록된 예식이 아직 없어요</p>
+              <p class="text-[13px] text-[#6B7684] leading-relaxed">
+                아래 <strong>‘+ 새 예식 만들기’</strong> 버튼을 눌러<br />축의금 접수를 바로 시작해보세요.
+              </p>
+            </div>
+          `;
+          return;
+        }
+
+        // Render newest updated/created events first
+        const sortedEvents = [...events].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+        sortedEvents.forEach((evt) => {
+          const validEntries = (evt.entries || []).filter((e) => !e.cancelled);
+          const totalAmount = validEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+          const isGroom = evt.side === '신랑측';
+
+          const sideBadgeClass = isGroom
+            ? 'bg-[#EEF2F6] text-[#2B4C7E] border-[#D6E0EC]'
+            : 'bg-[#FDF2F4] text-[#8B263E] border-[#F3D1D8]';
+
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className =
+            'card-surface w-full p-4 text-left hover:border-[#8B263E]/40 active:scale-[0.99] transition-all flex flex-col gap-2.5';
+
+          const metaParts = [formatDateKorean(evt.date)];
+          if (evt.venue) metaParts.push(evt.venue);
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-2 w-full">
+              <div class="flex items-center gap-1.5">
+                <span class="px-2.5 py-0.5 rounded-md border text-[12px] font-extrabold ${sideBadgeClass}">
+                  ${escapeHtml(evt.side)}
+                </span>
+                ${
+                  evt.isClosed
+                    ? '<span class="px-2 py-0.5 rounded-md bg-[#F2F0EC] text-[#6B7684] text-[11px] font-bold">마감됨</span>'
+                    : ''
+                }
+              </div>
+              <span class="text-[#8B95A1] text-[18px] leading-none">›</span>
+            </div>
+
+            <div class="w-full">
+              <div class="text-[18px] font-extrabold text-[#191F28] tracking-tight">
+                ${escapeHtml(evt.groomName)} <span class="text-[#8B263E] text-[15px]">♥</span> ${escapeHtml(evt.brideName)}
+              </div>
+              <div class="text-[13px] text-[#6B7684] mt-0.5 truncate">
+                ${escapeHtml(metaParts.join(' · '))}
+              </div>
+            </div>
+
+            <div class="w-full pt-2.5 border-t border-[#F2F0EC] flex items-center justify-between text-[13px]">
+              <span class="font-semibold text-[#4E5968]">유효 접수 <strong>${validEntries.length}건</strong></span>
+              <span class="font-extrabold text-[#8B263E] text-[15px]">${totalAmount.toLocaleString('ko-KR')}원</span>
+            </div>
+          `;
+
+          card.addEventListener('click', () => {
+            openEventReception(evt.id);
+          });
+
+          container.appendChild(card);
+        });
+      }
+
+      /* =====================================================================
+         7. SCREEN 2: CREATE / EDIT EVENT SCREEN LOGIC
+         ===================================================================== */
+      function openEventForm(eventToEdit = null) {
+        editingEventId = eventToEdit ? eventToEdit.id : null;
+        categoriesManuallyEdited = Boolean(eventToEdit);
+
+        document.getElementById('eventFormTitle').textContent = eventToEdit ? '예식 정보 수정' : '새 예식';
+        document.getElementById('btnSaveEventForm').textContent = eventToEdit ? '수정 내용 저장' : '저장하고 시작';
+
+        formSide = eventToEdit ? eventToEdit.side : '신랑측';
+        formCategories = eventToEdit
+          ? [...(eventToEdit.categories || [])]
+          : [...DEFAULT_CATEGORIES['신랑측']];
+
+        document.getElementById('inputGroomName').value = eventToEdit ? eventToEdit.groomName : '';
+        document.getElementById('inputBrideName').value = eventToEdit ? eventToEdit.brideName : '';
+        document.getElementById('inputEventDate').value = eventToEdit ? eventToEdit.date : getTodayDateString();
+        document.getElementById('inputEventVenue').value = eventToEdit ? (eventToEdit.venue || '') : '';
+        document.getElementById('inputEventStaff').value = eventToEdit ? (eventToEdit.staff || '') : '';
+        document.getElementById('inputNewCategory').value = '';
+
+        updateSideSegmentedUI();
+        renderCategoryPresetChips();
+        showScreen('eventFormScreen');
+      }
+
+      function updateSideSegmentedUI() {
+        const groomBtn = document.getElementById('sideGroomBtn');
+        const brideBtn = document.getElementById('sideBrideBtn');
+
+        if (formSide === '신랑측') {
+          groomBtn.className = 'min-h-[48px] rounded-lg text-[15px] font-bold transition-all bg-white text-[#8B263E] shadow-sm';
+          brideBtn.className = 'min-h-[48px] rounded-lg text-[15px] font-bold transition-all text-[#4E5968]';
+        } else {
+          brideBtn.className = 'min-h-[48px] rounded-lg text-[15px] font-bold transition-all bg-white text-[#8B263E] shadow-sm';
+          groomBtn.className = 'min-h-[48px] rounded-lg text-[15px] font-bold transition-all text-[#4E5968]';
+        }
+      }
+
+      function renderCategoryPresetChips() {
+        const container = document.getElementById('categoryPresetChips');
+        container.innerHTML = '';
+
+        if (formCategories.length === 0) {
+          container.innerHTML = '<span class="text-[12px] text-[#8B95A1]">등록된 선택지가 없습니다. 아래에서 추가해주세요.</span>';
+          return;
+        }
+
+        formCategories.forEach((cat, idx) => {
+          const chip = document.createElement('span');
+          chip.className = 'inline-flex items-center gap-1.5 min-h-[38px] pl-3 pr-2 rounded-full bg-[#FDF2F4] border border-[#F3D1D8] text-[13px] font-bold text-[#8B263E]';
+          chip.innerHTML = `
+            <span>${escapeHtml(cat)}</span>
+            <button type="button" aria-label="${escapeHtml(cat)} 삭제" class="w-6 h-6 rounded-full hover:bg-[#8B263E]/15 flex items-center justify-center text-[13px] leading-none">✕</button>
+          `;
+          chip.querySelector('button').addEventListener('click', () => {
+            formCategories.splice(idx, 1);
+            categoriesManuallyEdited = true;
+            renderCategoryPresetChips();
+          });
+          container.appendChild(chip);
+        });
+      }
+
+      function handleAddCustomCategory() {
+        const input = document.getElementById('inputNewCategory');
+        const val = input.value.trim();
+        if (!val) return;
+        if (formCategories.includes(val)) {
+          showToast('이미 등록된 선택지입니다.');
+          input.value = '';
+          return;
+        }
+        formCategories.push(val);
+        categoriesManuallyEdited = true;
+        input.value = '';
+        renderCategoryPresetChips();
+      }
+
+      function handleSaveEventForm(e) {
+        e.preventDefault();
+        const groomName = document.getElementById('inputGroomName').value.trim();
+        const brideName = document.getElementById('inputBrideName').value.trim();
+        const date = document.getElementById('inputEventDate').value || getTodayDateString();
+        const venue = document.getElementById('inputEventVenue').value.trim();
+        const staff = document.getElementById('inputEventStaff').value.trim();
+
+        if (!groomName) {
+          showToast('신랑 이름을 입력해주세요.', 'error');
+          document.getElementById('inputGroomName').focus();
+          return;
+        }
+        if (!brideName) {
+          showToast('신부 이름을 입력해주세요.', 'error');
+          document.getElementById('inputBrideName').focus();
+          return;
+        }
+
+        const nowIso = new Date().toISOString();
+
+        if (editingEventId) {
+          // Update existing event
+          const target = events.find((ev) => ev.id === editingEventId);
+          if (!target) return;
+
+          const diffs = [];
+          if (target.side !== formSide) diffs.push(`구분: ${target.side} → ${formSide}`);
+          if (target.groomName !== groomName) diffs.push(`신랑: ${target.groomName} → ${groomName}`);
+          if (target.brideName !== brideName) diffs.push(`신부: ${target.brideName} → ${brideName}`);
+          if (target.date !== date) diffs.push(`날짜: ${target.date} → ${date}`);
+          if ((target.venue || '') !== venue) diffs.push(`장소: '${target.venue || '없음'}' → '${venue || '없음'}'`);
+          if ((target.staff || '') !== staff) diffs.push(`담당자: '${target.staff || '없음'}' → '${staff || '없음'}'`);
+          if (JSON.stringify(target.categories) !== JSON.stringify(formCategories)) {
+            diffs.push(`누구 손님 선택지 변경 (${formCategories.join(', ')})`);
+          }
+
+          target.side = formSide;
+          target.groomName = groomName;
+          target.brideName = brideName;
+          target.date = date;
+          target.venue = venue;
+          target.staff = staff;
+          target.categories = [...formCategories];
+          target.updatedAt = nowIso;
+
+          appendHistoryLog(
+            target,
+            '예식 정보 수정',
+            diffs.length > 0 ? diffs.join(', ') : '예식 정보 저장 (변경 항목 없음)'
+          );
+
+          saveEventsToStorage();
+          showToast('예식 정보가 수정되었습니다.', 'success');
+          openEventReception(target.id);
+        } else {
+          // Create new event
+          const newEvent = {
+            id: generateId('evt'),
+            side: formSide,
+            groomName,
+            brideName,
+            date,
+            venue,
+            staff,
+            categories: [...formCategories],
+            isClosed: false,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            entries: [],
+            history: []
+          };
+
+          appendHistoryLog(
+            newEvent,
+            '예식 생성',
+            `${groomName} ♥ ${brideName} (${formSide}, ${formatDateKorean(date)})`
+          );
+
+          events.push(newEvent);
+          saveEventsToStorage();
+          showToast('새 예식이 생성되었습니다.', 'success');
+          openEventReception(newEvent.id);
+        }
+      }
+
+      /* =====================================================================
+         8. SCREEN 3: MAIN RECEPTION SCREEN & TABS
+         ===================================================================== */
+      function openEventReception(eventId) {
+        activeEventId = eventId;
+        activeTab = 'receive';
+        listSearchQuery = '';
+        listActiveFilter = '전체';
+        document.getElementById('listSearchInput').value = '';
+        document.getElementById('btnClearSearch').classList.add('hidden');
+
+        resetReceiveForm();
+        updateReceptionHeaderAndClosedState();
+        switchReceptionTab('receive');
+        showScreen('receptionScreen');
+      }
+
+      function updateReceptionHeaderAndClosedState() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        document.getElementById('receptionHeaderTitle').textContent =
+          `${evt.groomName} ♥ ${evt.brideName} · ${evt.side}`;
+
+        const validEntries = (evt.entries || []).filter((e) => !e.cancelled);
+        const totalAmount = validEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+        document.getElementById('receptionLiveSummaryBadge').textContent =
+          `총 ${validEntries.length}건 · ${formatCompactManwon(totalAmount)}`;
+
+        document.getElementById('navListCountBadge').textContent = String(validEntries.length);
+
+        // Closed state UI synchronization
+        const closedBanner = document.getElementById('closedBanner');
+        const isClosed = Boolean(evt.isClosed);
+
+        if (isClosed) {
+          closedBanner.classList.remove('hidden');
+        } else {
+          closedBanner.classList.add('hidden');
+        }
+
+        // Disable/enable inputs in Receive Tab when closed
+        const receiveControls = document.querySelectorAll('#tabReceive input, #tabReceive button');
+        receiveControls.forEach((ctrl) => {
+          if (ctrl.id === 'entryNameInput') {
+            ctrl.disabled = isClosed || document.getElementById('entryUnknownNameCheck').checked;
+          } else {
+            ctrl.disabled = isClosed;
+          }
+        });
+
+        // Update More Tab toggle button label
+        const toggleCloseLabel = document.getElementById('toggleCloseLabel');
+        const toggleCloseSublabel = document.getElementById('toggleCloseSublabel');
+        const toggleCloseIconWrap = document.getElementById('toggleCloseIconWrap');
+
+        if (isClosed) {
+          toggleCloseLabel.textContent = '접수 다시 열기';
+          toggleCloseLabel.className = 'text-[15px] font-bold text-[#059669]';
+          toggleCloseSublabel.textContent = '마감을 해제하고 축의금 접수를 재개합니다';
+          toggleCloseIconWrap.className = 'w-10 h-10 rounded-xl bg-[#ECFDF5] text-[#059669] flex items-center justify-center shrink-0';
+        } else {
+          toggleCloseLabel.textContent = '접수 마감';
+          toggleCloseLabel.className = 'text-[15px] font-bold text-[#8B263E]';
+          toggleCloseSublabel.textContent = '마감 후에는 신규 접수가 잠깁니다';
+          toggleCloseIconWrap.className = 'w-10 h-10 rounded-xl bg-[#FDF2F4] text-[#8B263E] flex items-center justify-center shrink-0';
+        }
+      }
+
+      function switchReceptionTab(tabName) {
+        activeTab = tabName;
+        const tabs = ['receive', 'list', 'more'];
+
+        tabs.forEach((t) => {
+          const panel = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+          const navBtn = document.getElementById(`navTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+
+          if (t === tabName) {
+            panel.classList.remove('hidden');
+            navBtn.classList.remove('text-[#6B7684]', 'font-semibold');
+            navBtn.classList.add('text-[#8B263E]', 'font-bold');
+          } else {
+            panel.classList.add('hidden');
+            navBtn.classList.remove('text-[#8B263E]', 'font-bold');
+            navBtn.classList.add('text-[#6B7684]', 'font-semibold');
+          }
+        });
+
+        if (tabName === 'receive') {
+          renderReceiveCategoryChips();
+        } else if (tabName === 'list') {
+          renderListTab();
+        }
+      }
+
+      /* ---------------------------------------------------------------------
+         TAB 1: '접수' FORM LOGIC
+         --------------------------------------------------------------------- */
+      function resetReceiveForm() {
+        const nameInput = document.getElementById('entryNameInput');
+        const unknownCheck = document.getElementById('entryUnknownNameCheck');
+        unknownCheck.checked = false;
+        nameInput.disabled = false;
+        nameInput.value = '';
+
+        document.getElementById('entryAmountInput').value = '';
+        updateReceiveAmountPreview();
+
+        selectedCategory = '';
+        renderReceiveCategoryChips();
+
+        document.getElementById('entryMemoInput').value = '';
+        syncQuickMemoChipsUI();
+
+        ticketCount = 0;
+        updateReceiveTicketUI();
+      }
+
+      function getReceiveAmountInWon() {
+        const raw = Number(document.getElementById('entryAmountInput').value) || 0;
+        if (raw <= 0) return 0;
+        return entryUnit === '만원' ? Math.round(raw * 10000) : Math.round(raw);
+      }
+
+      function updateReceiveAmountPreview() {
+        const won = getReceiveAmountInWon();
+        document.getElementById('entryAmountPreview').textContent = formatKoreanWonFull(won);
+      }
+
+      function switchEntryUnit(newUnit) {
+        if (entryUnit === newUnit) return;
+        const currentWon = getReceiveAmountInWon();
+        entryUnit = newUnit;
+
+        const manBtn = document.getElementById('unitManwonBtn');
+        const wonBtn = document.getElementById('unitWonBtn');
+        const unitLabel = document.getElementById('entryAmountUnitLabel');
+        const amtInput = document.getElementById('entryAmountInput');
+
+        if (entryUnit === '만원') {
+          manBtn.className = 'min-h-[34px] px-3 rounded-md text-[12px] font-bold bg-white text-[#8B263E] shadow-xs transition-all';
+          wonBtn.className = 'min-h-[34px] px-3 rounded-md text-[12px] font-bold text-[#4E5968] transition-all';
+          unitLabel.textContent = '만원';
+          amtInput.value = currentWon > 0 ? currentWon / 10000 : '';
+        } else {
+          wonBtn.className = 'min-h-[34px] px-3 rounded-md text-[12px] font-bold bg-white text-[#8B263E] shadow-xs transition-all';
+          manBtn.className = 'min-h-[34px] px-3 rounded-md text-[12px] font-bold text-[#4E5968] transition-all';
+          unitLabel.textContent = '원';
+          amtInput.value = currentWon > 0 ? currentWon : '';
+        }
+
+        updateReceiveAmountPreview();
+      }
+
+      function handleQuickAddManwon(manAmount) {
+        const currentWon = getReceiveAmountInWon();
+        const nextWon = currentWon + manAmount * 10000;
+        const amtInput = document.getElementById('entryAmountInput');
+        amtInput.value = entryUnit === '만원' ? nextWon / 10000 : nextWon;
+        updateReceiveAmountPreview();
+      }
+
+      function renderReceiveCategoryChips() {
+        const evt = getActiveEvent();
+        const container = document.getElementById('entryCategoryChips');
+        container.innerHTML = '';
+        if (!evt) return;
+
+        const cats = evt.categories || [];
+        if (cats.length === 0) {
+          container.innerHTML = '<span class="text-[12px] text-[#8B95A1]">설정된 하객 구분이 없습니다. (더보기 &gt; 예식 정보 수정에서 추가 가능)</span>';
+          return;
+        }
+
+        cats.forEach((cat) => {
+          const isSelected = selectedCategory === cat;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.disabled = Boolean(evt.isClosed);
+          btn.className = isSelected
+            ? 'min-h-[42px] px-3.5 rounded-xl text-[14px] font-bold bg-[#8B263E] text-white border border-[#8B263E] shadow-xs transition-all'
+            : 'min-h-[42px] px-3.5 rounded-xl text-[14px] font-semibold bg-[#FAFAF9] text-[#4E5968] border border-[#E8E6E1] hover:border-[#8B263E]/50 transition-all';
+          btn.textContent = cat;
+
+          btn.addEventListener('click', () => {
+            selectedCategory = selectedCategory === cat ? '' : cat;
+            renderReceiveCategoryChips();
+          });
+
+          container.appendChild(btn);
+        });
+      }
+
+      function syncQuickMemoChipsUI() {
+        const memoVal = document.getElementById('entryMemoInput').value;
+        document.querySelectorAll('#quickMemoChips .memo-chip').forEach((btn) => {
+          const tag = btn.getAttribute('data-memo');
+          const active = memoVal.includes(tag);
+          btn.className = active
+            ? 'memo-chip min-h-[36px] px-3 rounded-full text-[12px] font-bold border border-[#8B263E] bg-[#FDF2F4] text-[#8B263E] transition-colors'
+            : 'memo-chip min-h-[36px] px-3 rounded-full text-[12px] font-semibold border border-[#E8E6E1] bg-[#FAFAF9] text-[#4E5968] hover:border-[#8B263E] transition-colors';
+        });
+      }
+
+      function updateReceiveTicketUI() {
+        document.getElementById('entryTicketDisplay').textContent = `${ticketCount}매`;
+        document.querySelectorAll('#quickTicketPills .ticket-pill').forEach((btn) => {
+          const val = Number(btn.getAttribute('data-ticket'));
+          btn.className =
+            val === ticketCount
+              ? 'ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#8B263E] bg-[#FDF2F4] text-[#8B263E] transition-colors'
+              : 'ticket-pill min-h-[40px] rounded-xl text-[13px] font-bold border border-[#E8E6E1] bg-white text-[#4E5968] transition-colors';
+        });
+      }
+
+      function handleSaveNewEntry() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        if (evt.isClosed) {
+          showToast('접수가 마감된 상태입니다.', 'error');
+          return;
+        }
+
+        const unknownName = document.getElementById('entryUnknownNameCheck').checked;
+        const rawName = document.getElementById('entryNameInput').value.trim();
+        const finalName = unknownName ? '이름 확인 어려움' : rawName;
+
+        if (!unknownName && !rawName) {
+          showToast('이름을 입력하거나 "이름 확인 어려움"을 체크해주세요.', 'error');
+          document.getElementById('entryNameInput').focus();
+          return;
+        }
+
+        const amountWon = getReceiveAmountInWon();
+        if (amountWon <= 0) {
+          showToast('축의금 금액을 입력해주세요.', 'error');
+          document.getElementById('entryAmountInput').focus();
+          return;
+        }
+
+        const memo = document.getElementById('entryMemoInput').value.trim();
+        const nextSeq = (evt.entries ? evt.entries.length : 0) + 1;
+        const nowIso = new Date().toISOString();
+
+        const newEntry = {
+          seq: nextSeq,
+          id: generateId('ent'),
+          name: finalName,
+          unknownName,
+          amount: amountWon,
+          category: selectedCategory,
+          memo,
+          tickets: ticketCount,
+          cancelled: false,
+          createdAt: nowIso,
+          updatedAt: nowIso
+        };
+
+        evt.entries.push(newEntry);
+        evt.updatedAt = nowIso;
+
+        const logParts = [
+          `#${nextSeq} ${finalName}`,
+          `${amountWon.toLocaleString('ko-KR')}원`
+        ];
+        if (selectedCategory) logParts.push(selectedCategory);
+        if (ticketCount > 0) logParts.push(`식권 ${ticketCount}매`);
+        if (memo) logParts.push(`메모: ${memo}`);
+
+        appendHistoryLog(evt, '신규 접수', logParts.join(' · '));
+        saveEventsToStorage();
+
+        updateReceptionHeaderAndClosedState();
+        resetReceiveForm();
+
+        showToast(`#${nextSeq} ${finalName} · ${amountWon.toLocaleString('ko-KR')}원 저장 완료`, 'success');
+      }
+
+      /* ---------------------------------------------------------------------
+         TAB 2: '목록' SUMMARY, FILTERING & LIST RENDERING
+         --------------------------------------------------------------------- */
+      function renderListTab() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        const allEntries = evt.entries || [];
+        const validEntries = allEntries.filter((e) => !e.cancelled);
+        const cancelledCount = allEntries.length - validEntries.length;
+
+        const totalAmount = validEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const totalTickets = validEntries.reduce((sum, e) => sum + (Number(e.tickets) || 0), 0);
+
+        // Category breakdown among valid entries
+        const catStatsMap = new Map();
+        (evt.categories || []).forEach((c) => {
+          catStatsMap.set(c, { count: 0, amount: 0 });
+        });
+
+        validEntries.forEach((e) => {
+          const key = e.category || '미지정';
+          if (!catStatsMap.has(key)) {
+            catStatsMap.set(key, { count: 0, amount: 0 });
+          }
+          const stat = catStatsMap.get(key);
+          stat.count += 1;
+          stat.amount += Number(e.amount) || 0;
+        });
+
+        const breakdownRows = [];
+        catStatsMap.forEach((stat, key) => {
+          if (stat.count > 0 || (evt.categories || []).includes(key)) {
+            breakdownRows.push({ label: key, ...stat });
+          }
+        });
+
+        // Render Summary Card
+        const summaryCard = document.getElementById('listSummaryCard');
+        summaryCard.innerHTML = `
+          <div class="grid grid-cols-3 gap-2 pb-3.5 border-b border-[#F2F0EC]">
+            <div>
+              <div class="text-[12px] font-semibold text-[#6B7684]">유효 접수</div>
+              <div class="text-[18px] font-extrabold text-[#191F28] mt-0.5">${validEntries.length}건</div>
+              ${cancelledCount > 0 ? `<div class="text-[11px] text-red-500 font-semibold">취소 ${cancelledCount}건</div>` : ''}
+            </div>
+            <div class="col-span-2 text-right">
+              <div class="text-[12px] font-semibold text-[#6B7684]">총 축의금액 · 식권 ${totalTickets}매</div>
+              <div class="text-[20px] font-extrabold text-[#8B263E] mt-0.5">${totalAmount.toLocaleString('ko-KR')}원</div>
+              <div class="text-[11px] font-semibold text-[#6B7684]">${totalAmount > 0 ? numberToKoreanWords(totalAmount) + '원' : ''}</div>
+            </div>
+          </div>
+
+          <div class="pt-3">
+            <div class="text-[12px] font-bold text-[#4E5968] mb-2">누구 손님별 집계</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              ${breakdownRows
+                .map(
+                  (r) => `
+                  <div class="flex items-center justify-between text-[12.5px] py-0.5">
+                    <span class="text-[#4E5968] font-medium truncate">${escapeHtml(r.label)} <span class="text-[#8B95A1]">(${r.count})</span></span>
+                    <span class="font-bold text-[#191F28] shrink-0">${formatCompactManwon(r.amount)}</span>
+                  </div>
+                `
+                )
+                .join('')}
+            </div>
+          </div>
+        `;
+
+        // Render Filter Pills
+        const filterOptions = ['전체', '이름 확인 어려움', '취소됨', ...(evt.categories || [])];
+        if (!filterOptions.includes(listActiveFilter)) {
+          listActiveFilter = '전체';
+        }
+
+        const pillsContainer = document.getElementById('listFilterPills');
+        pillsContainer.innerHTML = '';
+
+        filterOptions.forEach((opt) => {
+          const isActive = listActiveFilter === opt;
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          pill.className = isActive
+            ? 'shrink-0 min-h-[38px] px-3.5 rounded-full text-[13px] font-bold bg-[#191F28] text-white transition-colors'
+            : 'shrink-0 min-h-[38px] px-3.5 rounded-full text-[13px] font-semibold bg-white border border-[#E8E6E1] text-[#4E5968] hover:border-[#191F28]/40 transition-colors';
+          pill.textContent = opt;
+          pill.addEventListener('click', () => {
+            listActiveFilter = opt;
+            renderListTab();
+          });
+          pillsContainer.appendChild(pill);
+        });
+
+        // Filter & Sort Entries
+        const q = listSearchQuery.toLowerCase();
+        const filtered = allEntries.filter((entry) => {
+          if (listActiveFilter === '이름 확인 어려움' && !entry.unknownName) return false;
+          if (listActiveFilter === '취소됨' && !entry.cancelled) return false;
+          if (
+            listActiveFilter !== '전체' &&
+            listActiveFilter !== '이름 확인 어려움' &&
+            listActiveFilter !== '취소됨' &&
+            entry.category !== listActiveFilter
+          ) {
+            return false;
+          }
+
+          if (q) {
+            const matchName = (entry.name || '').toLowerCase().includes(q);
+            const matchMemo = (entry.memo || '').toLowerCase().includes(q);
+            const matchSeq = `#${entry.seq}`.includes(q) || String(entry.seq) === q;
+            return matchName || matchMemo || matchSeq;
+          }
+          return true;
+        });
+
+        filtered.sort((a, b) => (listSortDesc ? b.seq - a.seq : a.seq - b.seq));
+
+        document.getElementById('filteredResultCount').textContent = `내역 ${filtered.length}건`;
+        document.getElementById('sortOrderLabel').textContent = listSortDesc ? '최신순' : '번호순';
+
+        const listContainer = document.getElementById('entriesListContainer');
+        listContainer.innerHTML = '';
+
+        if (filtered.length === 0) {
+          listContainer.innerHTML = `
+            <div class="card-surface p-8 text-center text-[13.5px] text-[#6B7684]">
+              조건에 해당하는 접수 내역이 없습니다.
+            </div>
+          `;
+          return;
+        }
+
+        filtered.forEach((entry) => {
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          itemBtn.className = `card-surface w-full p-3.5 text-left hover:border-[#8B263E]/40 active:scale-[0.99] transition-all flex flex-col gap-2 ${
+            entry.cancelled ? 'opacity-65 bg-[#FAFAF9]' : ''
+          }`;
+
+          const amtText = `${Number(entry.amount).toLocaleString('ko-KR')}원`;
+
+          itemBtn.innerHTML = `
+            <div class="w-full flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="px-2 py-0.5 rounded-md bg-[#FDF2F4] border border-[#F3D1D8] text-[12px] font-extrabold text-[#8B263E] shrink-0">
+                  #${entry.seq}
+                </span>
+                <span class="text-[16px] font-bold text-[#191F28] truncate ${entry.cancelled ? 'line-through text-[#6B7684]' : ''}">
+                  ${escapeHtml(entry.name)}
+                </span>
+                ${
+                  entry.cancelled
+                    ? '<span class="px-1.5 py-0.5 rounded bg-red-50 text-red-600 text-[11px] font-bold shrink-0">취소됨</span>'
+                    : ''
+                }
+              </div>
+              <span class="text-[16px] font-extrabold shrink-0 ${
+                entry.cancelled ? 'line-through text-[#8B95A1]' : 'text-[#191F28]'
+              }">
+                ${amtText}
+              </span>
+            </div>
+
+            <div class="w-full flex items-center justify-between gap-2 text-[12px] text-[#6B7684]">
+              <div class="flex items-center flex-wrap gap-1.5 min-w-0">
+                ${
+                  entry.category
+                    ? `<span class="px-2 py-0.5 rounded bg-[#F2F0EC] text-[#4E5968] font-semibold">${escapeHtml(entry.category)}</span>`
+                    : ''
+                }
+                ${
+                  entry.tickets > 0
+                    ? `<span class="px-2 py-0.5 rounded bg-[#EFF6FF] text-[#2563EB] font-semibold">식권 ${entry.tickets}매</span>`
+                    : ''
+                }
+                ${
+                  entry.memo
+                    ? `<span class="truncate text-[#6B7684]">${escapeHtml(entry.memo)}</span>`
+                    : ''
+                }
+              </div>
+              <span class="shrink-0 text-[#8B95A1]">${formatTimeShort(entry.createdAt)}</span>
+            </div>
+          `;
+
+          itemBtn.addEventListener('click', () => {
+            openEditEntryModal(entry.seq);
+          });
+
+          listContainer.appendChild(itemBtn);
+        });
+      }
+
+      /* ---------------------------------------------------------------------
+         MODAL 3: EDIT ENTRY MODAL LOGIC
+         --------------------------------------------------------------------- */
+      function openEditEntryModal(seq) {
+        const evt = getActiveEvent();
+        if (!evt) return;
+        const entry = (evt.entries || []).find((e) => e.seq === seq);
+        if (!entry) return;
+
+        editingEntrySeq = seq;
+        editSelectedCategory = entry.category || '';
+
+        document.getElementById('editEntryModalTitle').textContent = `#${entry.seq} 접수 내역 수정`;
+
+        const statusBadge = document.getElementById('editEntryStatusBadge');
+        const cancelToggleBtn = document.getElementById('btnCancelEntryToggle');
+
+        if (entry.cancelled) {
+          statusBadge.classList.remove('hidden');
+          cancelToggleBtn.textContent = '접수 복구';
+          cancelToggleBtn.className = 'min-h-[48px] px-3.5 rounded-xl text-[14px] font-bold text-[#059669] bg-[#ECFDF5] hover:bg-[#D1FAE5] transition-colors';
+        } else {
+          statusBadge.classList.add('hidden');
+          cancelToggleBtn.textContent = '접수 취소';
+          cancelToggleBtn.className = 'min-h-[48px] px-3.5 rounded-xl text-[14px] font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors';
+        }
+
+        const unknownCheck = document.getElementById('editUnknownNameCheck');
+        const nameInput = document.getElementById('editNameInput');
+        unknownCheck.checked = Boolean(entry.unknownName);
+        nameInput.disabled = Boolean(entry.unknownName);
+        nameInput.value = entry.name || '';
+
+        const amtInput = document.getElementById('editAmountInput');
+        amtInput.value = entry.amount || 0;
+        document.getElementById('editAmountPreview').textContent = formatKoreanWonFull(entry.amount);
+
+        document.getElementById('editMemoInput').value = entry.memo || '';
+        document.getElementById('editTicketInput').value = entry.tickets || 0;
+
+        renderEditCategoryChips();
+        openModal('editEntryModal');
+      }
+
+      function renderEditCategoryChips() {
+        const evt = getActiveEvent();
+        const container = document.getElementById('editCategoryChips');
+        container.innerHTML = '';
+        if (!evt) return;
+
+        const cats = [...(evt.categories || [])];
+        if (editSelectedCategory && !cats.includes(editSelectedCategory)) {
+          cats.push(editSelectedCategory);
+        }
+
+        cats.forEach((cat) => {
+          const isSelected = editSelectedCategory === cat;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = isSelected
+            ? 'min-h-[38px] px-3 rounded-xl text-[13px] font-bold bg-[#8B263E] text-white border border-[#8B263E]'
+            : 'min-h-[38px] px-3 rounded-xl text-[13px] font-semibold bg-[#FAFAF9] text-[#4E5968] border border-[#E8E6E1]';
+          btn.textContent = cat;
+          btn.addEventListener('click', () => {
+            editSelectedCategory = editSelectedCategory === cat ? '' : cat;
+            renderEditCategoryChips();
+          });
+          container.appendChild(btn);
+        });
+      }
+
+      function handleSaveEditEntry() {
+        const evt = getActiveEvent();
+        if (!evt || editingEntrySeq === null) return;
+        const entry = (evt.entries || []).find((e) => e.seq === editingEntrySeq);
+        if (!entry) return;
+
+        const unknownName = document.getElementById('editUnknownNameCheck').checked;
+        const rawName = document.getElementById('editNameInput').value.trim();
+        const finalName = unknownName ? '이름 확인 어려움' : rawName;
+
+        if (!unknownName && !rawName) {
+          showToast('이름을 입력해주세요.', 'error');
+          return;
+        }
+
+        const newAmount = Math.max(0, Math.round(Number(document.getElementById('editAmountInput').value) || 0));
+        if (newAmount <= 0) {
+          showToast('금액은 0원보다 커야 합니다.', 'error');
+          return;
+        }
+
+        const newMemo = document.getElementById('editMemoInput').value.trim();
+        const newTickets = Math.max(0, Math.round(Number(document.getElementById('editTicketInput').value) || 0));
+
+        // Build detailed field diff log
+        const diffs = [];
+        if (entry.name !== finalName) diffs.push(`이름: '${entry.name}' → '${finalName}'`);
+        if (entry.amount !== newAmount) {
+          diffs.push(`금액: ${entry.amount.toLocaleString('ko-KR')}원 → ${newAmount.toLocaleString('ko-KR')}원`);
+        }
+        if ((entry.category || '') !== editSelectedCategory) {
+          diffs.push(`구분: '${entry.category || '없음'}' → '${editSelectedCategory || '없음'}'`);
+        }
+        if ((entry.memo || '') !== newMemo) {
+          diffs.push(`메모: '${entry.memo || '없음'}' → '${newMemo || '없음'}'`);
+        }
+        if ((entry.tickets || 0) !== newTickets) {
+          diffs.push(`식권: ${entry.tickets || 0}매 → ${newTickets}매`);
+        }
+
+        entry.name = finalName;
+        entry.unknownName = unknownName;
+        entry.amount = newAmount;
+        entry.category = editSelectedCategory;
+        entry.memo = newMemo;
+        entry.tickets = newTickets;
+        entry.updatedAt = new Date().toISOString();
+        evt.updatedAt = entry.updatedAt;
+
+        appendHistoryLog(
+          evt,
+          '내역 수정',
+          diffs.length > 0 ? `#${entry.seq} ${diffs.join(', ')}` : `#${entry.seq} ${finalName} 저장 (변경 없음)`
+        );
+
+        saveEventsToStorage();
+        updateReceptionHeaderAndClosedState();
+        renderListTab();
+        closeModal('editEntryModal');
+        showToast(`#${entry.seq} 내역이 수정되었습니다.`, 'success');
+      }
+
+      function handleToggleCancelEntry() {
+        const evt = getActiveEvent();
+        if (!evt || editingEntrySeq === null) return;
+        const entry = (evt.entries || []).find((e) => e.seq === editingEntrySeq);
+        if (!entry) return;
+
+        entry.cancelled = !entry.cancelled;
+        entry.updatedAt = new Date().toISOString();
+        evt.updatedAt = entry.updatedAt;
+
+        const actionLabel = entry.cancelled ? '접수 취소' : '접수 복구';
+        appendHistoryLog(
+          evt,
+          actionLabel,
+          `#${entry.seq} ${entry.name} (${entry.amount.toLocaleString('ko-KR')}원) ${actionLabel} 처리`
+        );
+
+        saveEventsToStorage();
+        updateReceptionHeaderAndClosedState();
+        renderListTab();
+        closeModal('editEntryModal');
+        showToast(`#${entry.seq} ${actionLabel} 처리되었습니다.`);
+      }
+
+      /* ---------------------------------------------------------------------
+         TAB 3: '더보기' EXPORT (.xlsx / CSV), JSON BACKUP, CLOSE & HISTORY
+         --------------------------------------------------------------------- */
+      function sanitizeFileNamePart(str) {
+        return String(str || '')
+          .trim()
+          .replace(/[\\/:*?"<>|]/g, '_');
+      }
+
+      function handleExportExcel() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        const allEntries = evt.entries || [];
+        const validEntries = allEntries.filter((e) => !e.cancelled);
+        const totalAmount = validEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const totalTickets = validEntries.reduce((sum, e) => sum + (Number(e.tickets) || 0), 0);
+
+        const dateCompact = (evt.date || getTodayDateString()).replace(/-/g, '');
+        const baseFilename = `축의대_${sanitizeFileNamePart(evt.groomName)}_${sanitizeFileNamePart(evt.brideName)}_${sanitizeFileNamePart(evt.side)}_${dateCompact}`;
+
+        // Sheet 1 rows: '축의금 접수 내역'
+        const sheet1Data = [
+          ['순번', '상태', '이름', '금액(원)', '누구 손님', '식권(매)', '메모', '접수시각', '최종수정시각']
+        ];
+
+        allEntries.forEach((e) => {
+          sheet1Data.push([
+            e.seq,
+            e.cancelled ? '취소' : '정상',
+            e.name,
+            Number(e.amount) || 0,
+            e.category || '',
+            Number(e.tickets) || 0,
+            e.memo || '',
+            formatDateTimeFull(e.createdAt),
+            formatDateTimeFull(e.updatedAt)
+          ]);
+        });
+
+        sheet1Data.push([]);
+        sheet1Data.push(['합계 (정상 접수 기준)', `${validEntries.length}건`, '', totalAmount, '', totalTickets, '', '', '']);
+
+        // Sheet 2 rows: '요약 및 통계'
+        const catMap = new Map();
+        (evt.categories || []).forEach((c) => catMap.set(c, { count: 0, amount: 0, tickets: 0 }));
+        validEntries.forEach((e) => {
+          const key = e.category || '미지정';
+          if (!catMap.has(key)) catMap.set(key, { count: 0, amount: 0, tickets: 0 });
+          const st = catMap.get(key);
+          st.count += 1;
+          st.amount += Number(e.amount) || 0;
+          st.tickets += Number(e.tickets) || 0;
+        });
+
+        const sheet2Data = [
+          ['예식 기본 정보', ''],
+          ['축의대 구분', evt.side],
+          ['신랑', evt.groomName],
+          ['신부', evt.brideName],
+          ['예식 날짜', evt.date],
+          ['장소', evt.venue || '-'],
+          ['접수 담당자', evt.staff || '-'],
+          ['접수 상태', evt.isClosed ? '마감됨' : '진행중'],
+          [],
+          ['전체 집계 (취소 제외)', ''],
+          ['유효 접수 건수', validEntries.length],
+          ['취소 건수', allEntries.length - validEntries.length],
+          ['총 축의금액(원)', totalAmount],
+          ['총 식권 배부(매)', totalTickets],
+          [],
+          ['누구 손님별 통계', '건수', '금액(원)', '식권(매)']
+        ];
+
+        catMap.forEach((st, label) => {
+          sheet2Data.push([label, st.count, st.amount, st.tickets]);
+        });
+
+        // Try SheetJS (.xlsx) first, with graceful CSV fallback
+        if (window.XLSX && window.XLSX.utils) {
+          try {
+            const wb = window.XLSX.utils.book_new();
+            const ws1 = window.XLSX.utils.aoa_to_sheet(sheet1Data);
+            const ws2 = window.XLSX.utils.aoa_to_sheet(sheet2Data);
+
+            ws1['!cols'] = [
+              { wch: 8 },
+              { wch: 8 },
+              { wch: 18 },
+              { wch: 15 },
+              { wch: 14 },
+              { wch: 10 },
+              { wch: 24 },
+              { wch: 20 },
+              { wch: 20 }
+            ];
+            ws2['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 16 }, { wch: 12 }];
+
+            window.XLSX.utils.book_append_sheet(wb, ws1, '축의금 접수 내역');
+            window.XLSX.utils.book_append_sheet(wb, ws2, '요약 및 통계');
+
+            window.XLSX.writeFile(wb, `${baseFilename}.xlsx`);
+            showToast('엑셀(.xlsx) 파일이 저장되었습니다.', 'success');
+            return;
+          } catch (err) {
+            console.warn('SheetJS export failed, falling back to CSV:', err);
+          }
+        }
+
+        // Graceful UTF-8 BOM CSV Fallback
+        const csvLines = sheet1Data
+          .map((row) =>
+            row
+              .map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`)
+              .join(',')
+          )
+          .join('\r\n');
+        const blob = new Blob(['\uFEFF' + csvLines], { type: 'text/csv;charset=utf-8;' });
+        triggerBlobDownload(blob, `${baseFilename}.csv`);
+        showToast('엑셀 호환 CSV 파일이 저장되었습니다.', 'success');
+      }
+
+      function handleExportJsonBackup() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        const dateCompact = (evt.date || getTodayDateString()).replace(/-/g, '');
+        const filename = `축의대_백업_${sanitizeFileNamePart(evt.groomName)}_${sanitizeFileNamePart(evt.brideName)}_${dateCompact}.json`;
+
+        const payload = {
+          app: 'chuguidae',
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          event: evt
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        triggerBlobDownload(blob, filename);
+        showToast('백업 파일(.json)이 저장되었습니다.', 'success');
+      }
+
+      function triggerBlobDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 150);
+      }
+
+      function handleImportBackupFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            const importedEvent = parsed && parsed.event ? parsed.event : parsed;
+
+            if (
+              !importedEvent ||
+              typeof importedEvent !== 'object' ||
+              !importedEvent.groomName ||
+              !importedEvent.brideName ||
+              !Array.isArray(importedEvent.entries)
+            ) {
+              showToast('올바른 축의대 백업 파일이 아닙니다.', 'error');
+              return;
+            }
+
+            // Assign fresh ID so existing events on this device are never overwritten unintentionally
+            const cloned = {
+              ...importedEvent,
+              id: generateId('evt'),
+              updatedAt: new Date().toISOString()
+            };
+
+            appendHistoryLog(cloned, '백업 불러오기', `백업 파일(${file.name})에서 불러옴`);
+            events.push(cloned);
+            saveEventsToStorage();
+            renderHomeScreen();
+            showToast(`'${cloned.groomName} ♥ ${cloned.brideName}' 예식을 불러왔습니다.`, 'success');
+          } catch (err) {
+            console.error('Backup parse error:', err);
+            showToast('백업 파일을 읽는 중 오류가 발생했습니다.', 'error');
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+      }
+
+      function handleToggleCloseEvent() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        evt.isClosed = !evt.isClosed;
+        evt.updatedAt = new Date().toISOString();
+
+        const actionLabel = evt.isClosed ? '접수 마감' : '접수 다시 열기';
+        appendHistoryLog(
+          evt,
+          actionLabel,
+          evt.isClosed ? '접수가 마감되어 입력이 잠겼습니다.' : '접수 마감이 해제되어 입력이 재개되었습니다.'
+        );
+
+        saveEventsToStorage();
+        updateReceptionHeaderAndClosedState();
+        showToast(evt.isClosed ? '접수가 마감되었습니다.' : '접수가 다시 열렸습니다.');
+      }
+
+      function openHistoryModal() {
+        const evt = getActiveEvent();
+        if (!evt) return;
+
+        const logs = [...(evt.history || [])].reverse();
+        document.getElementById('historyCountBadge').textContent = `${logs.length}건`;
+
+        const container = document.getElementById('historyListContainer');
+        container.innerHTML = '';
+
+        if (logs.length === 0) {
+          container.innerHTML = '<p class="text-center text-[13px] text-[#6B7684] py-8">기록된 변경 이력이 없습니다.</p>';
+        } else {
+          logs.forEach((log) => {
+            const isCancel = log.action.includes('취소') || log.action.includes('마감');
+            const badgeStyle = isCancel
+              ? 'bg-red-50 text-red-600 border-red-100'
+              : 'bg-[#FDF2F4] text-[#8B263E] border-[#F3D1D8]';
+
+            const row = document.createElement('div');
+            row.className = 'p-3.5 rounded-2xl bg-[#FAFAF9] border border-[#E8E6E1] flex flex-col gap-1.5';
+            row.innerHTML = `
+              <div class="flex items-center justify-between gap-2">
+                <span class="px-2 py-0.5 rounded-md border text-[11.5px] font-extrabold ${badgeStyle}">
+                  ${escapeHtml(log.action)}
+                </span>
+                <span class="text-[11.5px] text-[#8B95A1]">${formatDateTimeFull(log.timestamp)}</span>
+              </div>
+              <p class="text-[13px] text-[#191F28] leading-snug break-keep">
+                ${escapeHtml(log.detail)}
+              </p>
+            `;
+            container.appendChild(row);
+          });
+        }
+
+        openModal('historyModal');
+      }
+
+      /* =====================================================================
+         9. EVENT LISTENERS WIRING
+         ===================================================================== */
+      function bindEventListeners() {
+        // Welcome Modal
+        document.getElementById('btnWelcomeGuide').addEventListener('click', () => {
+          openModal('guideModal');
+        });
+        document.getElementById('btnWelcomeStart').addEventListener('click', () => {
+          try {
+            localStorage.setItem(STORAGE_KEYS.WELCOMED, 'true');
+          } catch (_) {}
+          closeModal('welcomeModal');
+        });
+
+        // Guide Modal
+        document.getElementById('homeGuideLink').addEventListener('click', (e) => {
+          e.preventDefault();
+          openModal('guideModal');
+        });
+        document.getElementById('btnCloseGuideTop').addEventListener('click', () => closeModal('guideModal'));
+        document.getElementById('btnCloseGuideBottom').addEventListener('click', () => closeModal('guideModal'));
+
+        // Install PWA Button
+        document.getElementById('installAppBtn').addEventListener('click', async () => {
+          if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            const choice = await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            if (choice && choice.outcome === 'accepted') {
+              showToast('홈 화면에 앱 설치가 시작되었습니다.', 'success');
+            }
+          } else {
+            openModal('guideModal');
+          }
+        });
+
+        // Home Screen Buttons
+        document.getElementById('btnNewEvent').addEventListener('click', () => openEventForm(null));
+        document.getElementById('btnImportBackup').addEventListener('click', () => {
+          document.getElementById('backupFileInput').click();
+        });
+        document.getElementById('backupFileInput').addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file) {
+            handleImportBackupFile(file);
+            e.target.value = '';
+          }
+        });
+
+        // Create / Edit Event Form Screen
+        document.getElementById('btnBackFromEventForm').addEventListener('click', () => {
+          if (editingEventId) {
+            openEventReception(editingEventId);
+          } else {
+            renderHomeScreen();
+            showScreen('homeScreen');
+          }
+        });
+
+        ['sideGroomBtn', 'sideBrideBtn'].forEach((id) => {
+          document.getElementById(id).addEventListener('click', (e) => {
+            const nextSide = e.currentTarget.getAttribute('data-side');
+            if (formSide === nextSide) return;
+            formSide = nextSide;
+            updateSideSegmentedUI();
+            if (!categoriesManuallyEdited) {
+              formCategories = [...DEFAULT_CATEGORIES[formSide]];
+              renderCategoryPresetChips();
+            }
+          });
+        });
+
+        document.getElementById('btnAddCategory').addEventListener('click', handleAddCustomCategory);
+        document.getElementById('inputNewCategory').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddCustomCategory();
+          }
+        });
+        document.getElementById('eventForm').addEventListener('submit', handleSaveEventForm);
+
+        // Reception Screen Top Header & Bottom Tabs
+        document.getElementById('btnBackToHome').addEventListener('click', () => {
+          activeEventId = null;
+          renderHomeScreen();
+          showScreen('homeScreen');
+        });
+
+        ['navTabReceive', 'navTabList', 'navTabMore'].forEach((id) => {
+          document.getElementById(id).addEventListener('click', (e) => {
+            const tab = e.currentTarget.getAttribute('data-tab');
+            switchReceptionTab(tab);
+          });
+        });
+
+        // Tab 1: '접수' Controls
+        document.getElementById('entryUnknownNameCheck').addEventListener('change', (e) => {
+          const nameInput = document.getElementById('entryNameInput');
+          if (e.target.checked) {
+            nameInput.value = '이름 확인 어려움';
+            nameInput.disabled = true;
+          } else {
+            nameInput.disabled = false;
+            nameInput.value = '';
+            nameInput.focus();
+          }
+        });
+
+        document.getElementById('unitManwonBtn').addEventListener('click', () => switchEntryUnit('만원'));
+        document.getElementById('unitWonBtn').addEventListener('click', () => switchEntryUnit('원'));
+
+        document.querySelectorAll('.quick-amt-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const man = Number(btn.getAttribute('data-add-man')) || 0;
+            handleQuickAddManwon(man);
+          });
+        });
+
+        document.getElementById('btnResetAmount').addEventListener('click', () => {
+          document.getElementById('entryAmountInput').value = '';
+          updateReceiveAmountPreview();
+        });
+
+        document.getElementById('entryAmountInput').addEventListener('input', updateReceiveAmountPreview);
+
+        document.querySelectorAll('#quickMemoChips .memo-chip').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const tag = btn.getAttribute('data-memo');
+            const memoInput = document.getElementById('entryMemoInput');
+            const current = memoInput.value.trim();
+
+            if (!current) {
+              memoInput.value = tag;
+            } else if (current.includes(tag)) {
+              memoInput.value = current
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s && s !== tag)
+                .join(', ');
+            } else {
+              memoInput.value = `${current}, ${tag}`;
+            }
+            syncQuickMemoChipsUI();
+          });
+        });
+
+        document.getElementById('entryMemoInput').addEventListener('input', syncQuickMemoChipsUI);
+
+        document.getElementById('btnTicketMinus').addEventListener('click', () => {
+          ticketCount = Math.max(0, ticketCount - 1);
+          updateReceiveTicketUI();
+        });
+        document.getElementById('btnTicketPlus').addEventListener('click', () => {
+          ticketCount += 1;
+          updateReceiveTicketUI();
+        });
+        document.querySelectorAll('#quickTicketPills .ticket-pill').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            ticketCount = Number(btn.getAttribute('data-ticket')) || 0;
+            updateReceiveTicketUI();
+          });
+        });
+
+        document.getElementById('btnSaveEntry').addEventListener('click', handleSaveNewEntry);
+
+        // Tab 2: '목록' Search & Sort
+        document.getElementById('listSearchInput').addEventListener('input', (e) => {
+          listSearchQuery = e.target.value.trim();
+          const clearBtn = document.getElementById('btnClearSearch');
+          if (listSearchQuery) {
+            clearBtn.classList.remove('hidden');
+          } else {
+            clearBtn.classList.add('hidden');
+          }
+          renderListTab();
+        });
+
+        document.getElementById('btnClearSearch').addEventListener('click', () => {
+          listSearchQuery = '';
+          const input = document.getElementById('listSearchInput');
+          input.value = '';
+          document.getElementById('btnClearSearch').classList.add('hidden');
+          renderListTab();
+        });
+
+        document.getElementById('btnToggleSort').addEventListener('click', () => {
+          listSortDesc = !listSortDesc;
+          renderListTab();
+        });
+
+        // Tab 3: '더보기' Actions
+        document.getElementById('btnExportExcel').addEventListener('click', handleExportExcel);
+        document.getElementById('btnExportJsonBackup').addEventListener('click', handleExportJsonBackup);
+        document.getElementById('btnToggleCloseEvent').addEventListener('click', handleToggleCloseEvent);
+        document.getElementById('btnEditCurrentEvent').addEventListener('click', () => {
+          const evt = getActiveEvent();
+          if (evt) openEventForm(evt);
+        });
+        document.getElementById('btnOpenHistoryModal').addEventListener('click', openHistoryModal);
+
+        // Edit Entry Modal Listeners
+        document.getElementById('editUnknownNameCheck').addEventListener('change', (e) => {
+          const nameInput = document.getElementById('editNameInput');
+          if (e.target.checked) {
+            nameInput.value = '이름 확인 어려움';
+            nameInput.disabled = true;
+          } else {
+            nameInput.disabled = false;
+            if (nameInput.value === '이름 확인 어려움') nameInput.value = '';
+            nameInput.focus();
+          }
+        });
+
+        document.getElementById('editAmountInput').addEventListener('input', (e) => {
+          document.getElementById('editAmountPreview').textContent = formatKoreanWonFull(e.target.value);
+        });
+
+        document.getElementById('btnEditTicketMinus').addEventListener('click', () => {
+          const input = document.getElementById('editTicketInput');
+          input.value = Math.max(0, (Number(input.value) || 0) - 1);
+        });
+        document.getElementById('btnEditTicketPlus').addEventListener('click', () => {
+          const input = document.getElementById('editTicketInput');
+          input.value = Math.max(0, (Number(input.value) || 0) + 1);
+        });
+
+        document.getElementById('btnCancelEntryToggle').addEventListener('click', handleToggleCancelEntry);
+        document.getElementById('btnCloseEditEntry').addEventListener('click', () => closeModal('editEntryModal'));
+        document.getElementById('btnSaveEditEntry').addEventListener('click', handleSaveEditEntry);
+
+        // Change History Modal Listener
+        document.getElementById('btnCloseHistoryModal').addEventListener('click', () => closeModal('historyModal'));
+
+        // Backdrop click to close secondary modals
+        ['guideModal', 'editEntryModal', 'historyModal'].forEach((modalId) => {
+          document.getElementById(modalId).addEventListener('click', (e) => {
+            if (e.target.id === modalId) {
+              closeModal(modalId);
+            }
+          });
+        });
+      }
+
+      /* =====================================================================
+         10. INITIALIZATION
+         ===================================================================== */
+      function initApp() {
+        initPwaAssets();
+        events = loadEventsFromStorage();
+        bindEventListeners();
+        renderHomeScreen();
+        showScreen('homeScreen');
+
+        // Show Welcome Modal on first visit
+        try {
+          if (!localStorage.getItem(STORAGE_KEYS.WELCOMED)) {
+            openModal('welcomeModal');
+          }
+        } catch (_) {
+          openModal('welcomeModal');
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+      } else {
+        initApp();
+      }
+    })();
+  </script>
+</body>
+</html>
